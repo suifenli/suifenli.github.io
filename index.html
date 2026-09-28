@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark">
+<title>Pokémon Showdown ↔ Cobblemon 双向转换器</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --poke-red: #ee1515;
+  --poke-red-dark: #c70e0e;
+  --poke-blue: #30a7d7;
+  --poke-yellow: #ffcb05;
+  --poke-dark: #2a2a2a;
+  --bg-1: #1a1a2e;
+  --bg-2: #16213e;
+  --bg-3: #0f3460;
+  --card: #1f2240;
+  --card-border: #3a3f6b;
+  --text: #f5f5f7;
+  --text-dim: #a9a9c9;
+}
+
+body {
+  font-family: "Segoe UI", system-ui, -apple-system, "Microsoft YaHei", sans-serif;
+  background:
+    radial-gradient(circle at 15% 10%, rgba(238, 21, 21, .12), transparent 40%),
+    radial-gradient(circle at 85% 90%, rgba(48, 167, 215, .15), transparent 45%),
+    linear-gradient(160deg, var(--bg-1) 0%, var(--bg-2) 50%, var(--bg-3) 100%);
+  background-attachment: fixed;
+  color: var(--text);
+  min-height: 100vh;
+  padding: 28px 20px;
+}
+
+.wrap { max-width: 1200px; margin: 0 auto; }
+
+/* ===== 头部 ===== */
+header { text-align: center; margin-bottom: 26px; }
+.pokeball {
+  width: 64px; height: 64px; margin: 0 auto 10px;
+  display: block;
+  filter: drop-shadow(0 4px 10px rgba(238, 21, 21, .35));
+  transition: transform .4s ease;
+}
+.pokeball:hover { transform: rotate(180deg); }
+
+h1 {
+  font-size: 30px;
+  letter-spacing: 1px;
+  background: linear-gradient(90deg, #ff5a5a, var(--poke-yellow) 50%, var(--poke-blue));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: 900;
+}
+.subtitle {
+  margin-top: 6px;
+  color: var(--text-dim);
+  font-size: 14px;
+}
+.subtitle b { color: var(--poke-yellow); }
+
+/* ===== 双栏 ===== */
+.container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+}
+@media (max-width: 860px) { .container { grid-template-columns: 1fr; } }
+
+.box {
+  background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,0));
+  background-color: var(--card);
+  border: 1px solid var(--card-border);
+  border-top: 4px solid var(--poke-yellow);
+  border-radius: 16px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
+}
+.box.right { border-top-color: var(--poke-blue); }
+
+h2 {
+  font-size: 17px;
+  color: #fff;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+h2 .tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: #111;
+}
+.box:not(.right) h2 .tag { background: var(--poke-yellow); }
+.box.right h2 .tag { background: var(--poke-blue); }
+
+textarea {
+  width: 100%;
+  min-height: 400px;
+  background: #12142b;
+  color: #fff;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 14px;
+  line-height: 1.55;
+  resize: vertical;
+  white-space: pre;
+  font-family: Consolas, "Courier New", monospace;
+  transition: border-color .15s, box-shadow .15s;
+}
+textarea:focus {
+  outline: none;
+  border-color: var(--poke-yellow);
+  box-shadow: 0 0 0 3px rgba(255, 203, 5, .15);
+}
+.box.right textarea:focus {
+  border-color: var(--poke-blue);
+  box-shadow: 0 0 0 3px rgba(48, 167, 215, .18);
+}
+
+/* ===== 按钮 ===== */
+.btn-row {
+  display: flex;
+  gap: 10px;
+  margin: 14px 0 6px;
+  flex-wrap: wrap;
+}
+button {
+  padding: 9px 16px;
+  border: none;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  color: #fff;
+  background: var(--card-border);
+  transition: transform .1s, filter .15s, background .15s;
+}
+button:hover { filter: brightness(1.15); }
+button:active { transform: scale(.97); }
+
+button.primary {
+  background: linear-gradient(180deg, #ff4d4d, var(--poke-red) 55%, var(--poke-red-dark));
+  box-shadow: 0 4px 14px rgba(238, 21, 21, .4);
+}
+button.ghost {
+  background: transparent;
+  border: 1.5px solid var(--card-border);
+  color: var(--text-dim);
+}
+button.ghost:hover { border-color: var(--poke-yellow); color: var(--poke-yellow); }
+button.danger {
+  background: transparent;
+  border: 1.5px solid #6b3a4a;
+  color: #ff9fb0;
+}
+button.danger:hover { border-color: var(--poke-red); color: #ff7a8a; }
+button.success { background: #2ecc71 !important; color: #08301c; }
+
+/* ===== 状态与提示 ===== */
+.status {
+  margin-top: 8px;
+  font-size: 13px;
+  min-height: 18px;
+  color: var(--text-dim);
+}
+.status.error { color: #ff7a8a; }
+.status.ok { color: #7ee787; }
+.info {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #7d81a8;
+  line-height: 1.7;
+}
+
+footer {
+  text-align: center;
+  margin-top: 24px;
+  color: #6a6e96;
+  font-size: 12px;
+}
+footer .dot { color: var(--poke-red); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <svg class="pokeball" viewBox="0 0 100 100" aria-hidden="true">
+      <circle cx="50" cy="50" r="46" fill="#ffffff"/>
+      <path d="M4 50 a46 46 0 0 1 92 0 Z" fill="#ee1515"/>
+      <rect x="4" y="46" width="92" height="8" fill="#2a2a2a"/>
+      <circle cx="50" cy="50" r="15" fill="#2a2a2a"/>
+      <circle cx="50" cy="50" r="9" fill="#ffffff"/>
+    </svg>
+    <h1>Pokémon Showdown ↔ Cobblemon</h1>
+    <p class="subtitle">宝可梦配置 <b>双向转换器</b> · 名称 / 等级 / 性格 / 特性 / 携带物 / 亲密度 / IVs / EVs / 招式</p>
+  </header>
+
+  <div class="container">
+    <!-- 格式一 -->
+    <div class="box">
+      <h2><span class="tag">格式一</span>Showdown 队伍文本</h2>
+      <textarea id="showdownInput" spellcheck="false" placeholder="粘贴 Showdown 导出格式，例如：&#10;Snivy @ Exp. Share&#10;IVs: 19 HP / 23 Atk / 29 Def / 15 SpA / 22 SpD / 13 Spe&#10;EVs: 16 HP / 24 Atk / 32 Def / 36 SpA / 48 SpD / 52 Spe&#10;Ability: Contrary&#10;Level: 56&#10;Timid Nature&#10;- Flamethrower&#10;- Air Slash&#10;- Weather Ball&#10;- Solar Beam&#10;&#10;支持无携带物：第一行只写「Snivy」即可"></textarea>
+      <div class="btn-row">
+        <button class="primary" onclick="showdownToCobble()">转换 → Cobblemon 指令</button>
+        <button onclick="copyText('cobbleInput', this)">复制结果</button>
+        <button class="danger" onclick="clearBox('showdownInput')">清空</button>
+      </div>
+      <div class="status" id="showdownStatus"></div>
+      <div class="info">支持无携带物（第一行只写宝可梦名）、昵称、性别 (M/F)、Level、Happiness、Tera Type。未写等级默认 lvl=100；无携带物时输出中不含 helditem=。</div>
+    </div>
+
+    <!-- 格式二 -->
+    <div class="box right">
+      <h2><span class="tag">格式二</span>Cobblemon /givepokemonother 指令</h2>
+      <textarea id="cobbleInput" spellcheck="false" placeholder="粘贴 Cobblemon 指令，例如：&#10;/givepokemonother @p snivy ability=contrary helditem=cobblemon:exp_share attack_iv=23 special_attack_iv=15 defence_iv=29 speed_iv=13 special_defence_iv=22 hp_iv=19 nature=timid lvl=56 hp_ev=16 attack_ev=24 defence_ev=32 special_attack_ev=36 special_defence_ev=48 speed_ev=52 moves=flamethrower,airslash,weatherball,solarbeam&#10;&#10;也可不含 helditem 参数"></textarea>
+      <div class="btn-row">
+        <button class="primary" onclick="cobbleToShowdown()">转换 → Showdown 文本</button>
+        <button onclick="copyText('showdownInput', this)">复制结果</button>
+        <button class="danger" onclick="clearBox('cobbleInput')">清空</button>
+      </div>
+      <div class="status" id="cobbleStatus"></div>
+      <div class="info">兼容 /givepokemonother 与 /givepokemon 前缀；支持 nickname、ability、helditem、nature、lvl、friendship、moves 等参数。</div>
+    </div>
+  </div>
+
+  <footer><span class="dot">●</span> 宝可梦双向转换器 · 等级缺失时默认 lvl=100 · 无携带物自动省略 helditem</footer>
+</div>
+
+<script>
+"use strict";
+
+/* ================= 常量与映射 ================= */
+
+const STAT_LABEL = { hp: "HP", atk: "Atk", def: "Def", spa: "SpA", spd: "SpD", spe: "Spe" };
+const STAT_ABBR  = { HP: "hp", Atk: "atk", Def: "def", SpA: "spa", SpD: "spd", Spe: "spe" };
+
+// 道具映射：Showdown 名 -> Cobblemon 物品 ID（其余道具走通用规则转换）
+const ITEM_MAP = {
+    "Exp. Share": "cobblemon:exp_share"
+};
+
+// 常见多词招式：Cobblemon 招式 ID -> Showdown 标准招式名
+const MOVE_NAMES = {
+    airslash: "Air Slash", aquajet: "Aqua Jet", aurorabeam: "Aurora Beam",
+    auroraveil: "Aurora Veil", aurasphere: "Aura Sphere", bodyslam: "Body Slam",
+    bravebird: "Brave Bird", bulkup: "Bulk Up", bulletpunch: "Bullet Punch",
+    bulletseed: "Bullet Seed", calmmind: "Calm Mind", closecombat: "Close Combat",
+    darkpulse: "Dark Pulse", doubleedge: "Double-Edge", dragonbreath: "Dragon Breath",
+    dragonclaw: "Dragon Claw", dragondance: "Dragon Dance", dragonpulse: "Dragon Pulse",
+    dragonrush: "Dragon Rush", dragontail: "Dragon Tail", earthpower: "Earth Power",
+    energyball: "Energy Ball", expandingforce: "Expanding Force", extremespeed: "Extreme Speed",
+    fierydance: "Fiery Dance", fireblast: "Fire Blast", firefang: "Fire Fang",
+    firepunch: "Fire Punch", flamecharge: "Flame Charge", flareblitz: "Flare Blitz",
+    flashcannon: "Flash Cannon", focusblast: "Focus Blast", foulplay: "Foul Play",
+    freezedry: "Freeze-Dry", gigadrain: "Giga Drain", gigaimpact: "Giga Impact",
+    grassknot: "Grass Knot", gyroball: "Gyro Ball", healbell: "Heal Bell",
+    heatcrash: "Heat Crash", heatwave: "Heat Wave", heavyslam: "Heavy Slam",
+    hiddenpower: "Hidden Power", highhorsepower: "High Horsepower", honeclaws: "Hone Claws",
+    hydropump: "Hydro Pump", hyperbeam: "Hyper Beam", icebeam: "Ice Beam",
+    icefang: "Ice Fang", icepunch: "Ice Punch", iciclecrash: "Icicle Crash",
+    iciclespear: "Icicle Spear", irondefense: "Iron Defense", ironhead: "Iron Head",
+    lavaplume: "Lava Plume", leafstorm: "Leaf Storm", leechseed: "Leech Seed",
+    lightscreen: "Light Screen", machpunch: "Mach Punch", magicalleaf: "Magical Leaf",
+    milkdrink: "Milk Drink", morningsun: "Morning Sun", mysticalfire: "Mystical Fire",
+    nastyplot: "Nasty Plot", nightslash: "Night Slash", originpulse: "Origin Pulse",
+    partingshot: "Parting Shot", playrough: "Play Rough", poisonjab: "Poison Jab",
+    powergem: "Power Gem", precipiceblades: "Precipice Blades", psychicfangs: "Psychic Fangs",
+    rapidspin: "Rapid Spin", rockblast: "Rock Blast", rockslide: "Rock Slide",
+    rocktomb: "Rock Tomb", sacredfire: "Sacred Fire", shadowball: "Shadow Ball",
+    shellsmash: "Shell Smash", skillswap: "Skill Swap", slackoff: "Slack Off",
+    sludgebomb: "Sludge Bomb", sludgewave: "Sludge Wave", sleeppowder: "Sleep Powder",
+    softboiled: "Soft-Boiled", solarbeam: "Solar Beam", stealthrock: "Stealth Rock",
+    stickyweb: "Sticky Web", stoneedge: "Stone Edge", stompingtantrum: "Stomping Tantrum",
+    storedpower: "Stored Power", strengthsap: "Strength Sap", stunspore: "Stun Spore",
+    suckerpunch: "Sucker Punch", sunnyday: "Sunny Day", swordsdance: "Swords Dance",
+    thunderfang: "Thunder Fang", thunderpunch: "Thunder Punch", thunderwave: "Thunder Wave",
+    toxicspikes: "Toxic Spikes", trickroom: "Trick Room", tripleaxel: "Triple Axel",
+    uturn: "U-turn", vacuumwave: "Vacuum Wave", voltswitch: "Volt Switch",
+    weatherball: "Weather Ball", wildcharge: "Wild Charge", willowisp: "Will-O-Wisp",
+    zenheadbutt: "Zen Headbutt"
+};
+
+// 特殊拼写物种：Cobblemon ID -> Showdown 标准名
+const SPECIES_NAMES = {
+    chien_pao: "Chien-Pao", chi_yu: "Chi-Yu", farfetchd: "Farfetch'd",
+    flabebe: "Flabébé", hakamo_o: "Hakamo-o", ho_oh: "Ho-Oh",
+    jangmo_o: "Jangmo-o", kommo_o: "Kommo-o", mime_jr: "Mime Jr.",
+    mr_mime: "Mr. Mime", mr_rime: "Mr. Rime", nidoran_f: "Nidoran-F",
+    nidoran_m: "Nidoran-M", porygon_z: "Porygon-Z", sirfetchd: "Sirfetch'd",
+    ting_lu: "Ting-Lu", type_null: "Type: Null", wo_chien: "Wo-Chien"
+};
+
+/* ================= 通用工具 ================= */
+
+const $ = (id) => document.getElementById(id);
+
+function capitalizeFirst(s) {
+    return s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
+}
+function capitalizeEach(s) {
+    return s ? s.split(" ").map(capitalizeFirst).join(" ") : "";
+}
+
+function showStatus(id, msg, type) {
+    const el = $(id);
+    el.textContent = msg;
+    el.className = "status" + (type ? " " + type : "");
+}
+
+function flashBtn(btn, text) {
+    if (!btn) return;
+    if (!btn.dataset.original) btn.dataset.original = btn.textContent;
+    btn.textContent = text;
+    btn.classList.add("success");
+    clearTimeout(btn._flashTimer);
+    btn._flashTimer = setTimeout(() => {
+        btn.textContent = btn.dataset.original;
+        btn.classList.remove("success");
+    }, 1500);
+}
+
+function clearBox(id) {
+    $(id).value = "";
+    $(id).focus();
+}
+
+async function copyText(id, btn) {
+    const el = $(id);
+    if (!el.value.trim()) {
+        showStatus(id === "cobbleInput" ? "cobbleStatus" : "showdownStatus", "没有可复制的内容，请先进行转换", "error");
+        return;
+    }
+    try {
+        await navigator.clipboard.writeText(el.value);
+    } catch (e) {
+        el.select();
+        document.execCommand("copy");
+    }
+    flashBtn(btn, "已复制 ✓");
+}
+
+/* ================= 名称转换 ================= */
+
+// Showdown 物种名 -> Cobblemon ID
+function speciesToId(name) {
+    const n = name.trim().toLowerCase();
+    for (const [id, show] of Object.entries(SPECIES_NAMES)) {
+        if (show.toLowerCase() === n) return id;
+    }
+    return n.replace(/['’.]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+}
+
+// Cobblemon ID -> Showdown 物种名
+function speciesToShowdown(id) {
+    if (SPECIES_NAMES[id]) return SPECIES_NAMES[id];
+    return id.split("_").map(capitalizeFirst).join(" ");
+}
+
+// Showdown 道具名 -> Cobblemon 物品 ID；无道具名时返回空串
+function itemToId(name) {
+    const n = name.trim();
+    if (!n) return "";
+    if (ITEM_MAP[n]) return ITEM_MAP[n];
+    return "cobblemon:" + n.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+}
+
+// Cobblemon 物品 ID -> Showdown 道具名
+function itemToShowdown(cobbleId) {
+    const bare = cobbleId.replace(/^cobblemon:/, "");
+    for (const [name, id] of Object.entries(ITEM_MAP)) {
+        if (id === cobbleId) return name;
+    }
+    return bare.split("_").map(capitalizeFirst).join(" ");
+}
+
+// Showdown 招式名 -> Cobblemon 招式 ID
+function moveToId(move) {
+    return move.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+// Cobblemon 招式 ID -> Showdown 招式名
+function moveToShowdown(id) {
+    if (MOVE_NAMES[id]) return MOVE_NAMES[id];
+    return capitalizeEach(id.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " "));
+}
+
+/* ================= Showdown -> 数据对象 ================= */
+
+function parseStats(text, target) {
+    for (const seg of text.split("/")) {
+        const m = seg.trim().match(/^(\d+)\s+(\w+)/);
+        if (!m) continue;
+        const key = STAT_ABBR[m[2]];
+        if (key) target[key] = parseInt(m[1], 10);
+    }
+}
+
+function parseSpeciesLine(s, res) {
+    const parens = [...s.matchAll(/\(([^)]*)\)/g)].map((m) => m[1]);
+    const base = s.replace(/\([^)]*\)/g, "").trim();
+    res.species = speciesToId(base);
+    for (const p of parens) {
+        if (/^[MF]$/i.test(p.trim())) continue; // 性别：Cobblemon 指令无需
+        res.nickname = p.trim();
+    }
+}
+
+function parseShowdown(text) {
+    const res = {
+        species: "", helditem: "", ability: "", nature: "", level: 100,
+        iv: { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 },
+        ev: { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 },
+        moves: [], tera: "", happiness: 255, nickname: ""
+    };
+    for (const raw of text.split("\n")) {
+        const line = raw.trim();
+        if (!line) continue;
+
+        // 带 @ 道具的物种行
+        if (line.includes("@")) {
+            const [sp, item] = line.split("@");
+            res.helditem = itemToId(item);
+            parseSpeciesLine(sp, res);
+            continue;
+        }
+        if (/^(lvl|level|L)\s*:/i.test(line)) {
+            const m = line.match(/(\d+)/);
+            if (m) res.level = parseInt(m[1], 10);
+        } else if (line.startsWith("Happiness:")) {
+            const m = line.match(/(\d+)/);
+            if (m) res.happiness = parseInt(m[1], 10);
+        } else if (line.startsWith("Ability:")) {
+            res.ability = line.slice(8).trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+        } else if (line.startsWith("Tera Type:")) {
+            res.tera = line.slice(10).trim();
+        } else if (/^(.+?)\s+Nature$/i.test(line)) {
+            res.nature = line.replace(/\s+Nature$/i, "").trim().toLowerCase();
+        } else if (line.startsWith("IVs:")) {
+            parseStats(line.slice(4), res.iv);
+        } else if (line.startsWith("EVs:")) {
+            parseStats(line.slice(4), res.ev);
+        } else if (/^[-–—]\s*/.test(line)) {
+            res.moves.push(moveToId(line.replace(/^[-–—]\s*/, "")));
+        } else if (!res.species) {
+            // 兜底：没有 @ 道具的裸物种行（如 "Snivy" 或 "Snivy (Leafy)"）
+            parseSpeciesLine(line, res);
+        }
+    }
+    return res;
+}
+
+function buildCobbleCommand(res) {
+    let cmd = `/givepokemonother @p ${res.species}`;
+    if (res.nickname) cmd += ` nickname=${res.nickname}`;
+    if (res.ability) cmd += ` ability=${res.ability}`;
+    if (res.helditem) cmd += ` helditem=${res.helditem}`; // 无携带物则省略（即 helditem 清空）
+    cmd += ` hp_iv=${res.iv.hp} attack_iv=${res.iv.atk} defence_iv=${res.iv.def}`;
+    cmd += ` special_attack_iv=${res.iv.spa} special_defence_iv=${res.iv.spd} speed_iv=${res.iv.spe}`;
+    if (res.nature) cmd += ` nature=${res.nature}`;
+    cmd += ` lvl=${res.level}`; // 未写 Level 时默认 100
+    cmd += ` hp_ev=${res.ev.hp} attack_ev=${res.ev.atk} defence_ev=${res.ev.def}`;
+    cmd += ` special_attack_ev=${res.ev.spa} special_defence_ev=${res.ev.spd} speed_ev=${res.ev.spe}`;
+    if (res.moves.length) cmd += ` moves=${res.moves.join(",")}`;
+    if (res.happiness !== 255) cmd += ` friendship=${res.happiness}`;
+    return cmd;
+}
+
+/* ================= Cobblemon 指令 -> 数据对象 ================= */
+
+function parseCobble(text) {
+    const cleaned = text.trim().replace(/^\/givepokemon(?:other)?\s+(?:@\S+\s+)?/i, "");
+    const parts = cleaned.split(/\s+/).filter(Boolean);
+    const params = { species: parts.find((p) => !p.includes("=")) || "" };
+    for (const p of parts) {
+        const i = p.indexOf("=");
+        if (i > 0) params[p.slice(0, i).toLowerCase()] = p.slice(i + 1);
+    }
+    return params;
+}
+
+function buildShowdownText(params) {
+    const lines = [];
+    let first = speciesToShowdown(params.species);
+    if (params.nickname) first += ` (${params.nickname})`;
+    if (params.helditem) first += ` @ ${itemToShowdown(params.helditem)}`;
+    lines.push(first);
+
+    if (params.ability) {
+        lines.push(`Ability: ${capitalizeEach(String(params.ability).replace(/[_-]+/g, " "))}`);
+    }
+    if (params.tera_type) {
+        lines.push(`Tera Type: ${capitalizeEach(String(params.tera_type).replace(/[_-]+/g, " "))}`);
+    }
+    const lvl = parseInt(params.lvl, 10);
+    if (lvl && lvl !== 100) lines.push(`Level: ${lvl}`);
+
+    const keys = ["hp", "atk", "def", "spa", "spd", "spe"];
+    const evMap = {
+        hp: params.hp_ev, atk: params.attack_ev, def: params.defence_ev,
+        spa: params.special_attack_ev, spd: params.special_defence_ev, spe: params.speed_ev
+    };
+    if (keys.some((k) => evMap[k] !== undefined && parseInt(evMap[k], 10) > 0)) {
+        lines.push("EVs: " + keys.map((k) => `${evMap[k] || 0} ${STAT_LABEL[k]}`).join(" / "));
+    }
+    const ivMap = {
+        hp: params.hp_iv, atk: params.attack_iv, def: params.defence_iv,
+        spa: params.special_attack_iv, spd: params.special_defence_iv, spe: params.speed_iv
+    };
+    if (keys.some((k) => ivMap[k] !== undefined && parseInt(ivMap[k], 10) !== 31)) {
+        lines.push("IVs: " + keys.map((k) => `${ivMap[k] || 31} ${STAT_LABEL[k]}`).join(" / "));
+    }
+    if (params.friendship !== undefined && parseInt(params.friendship, 10) !== 255) {
+        lines.push(`Happiness: ${parseInt(params.friendship, 10)}`);
+    }
+    if (params.nature) {
+        lines.push(`${capitalizeFirst(String(params.nature).replace(/[_-]+/g, " "))} Nature`);
+    }
+    if (params.moves) {
+        for (const m of String(params.moves).split(",")) {
+            if (m.trim()) lines.push(`- ${moveToShowdown(m.trim())}`);
+        }
+    }
+    return lines.join("\n");
+}
+
+/* ================= 页面交互 ================= */
+
+function showdownToCobble() {
+    const text = $("showdownInput").value.trim();
+    if (!text) { showStatus("showdownStatus", "请先粘贴 Showdown 队伍文本", "error"); return; }
+    const res = parseShowdown(text);
+    if (!res.species) {
+        showStatus("showdownStatus", "未能识别宝可梦名称，请检查第一行是否为宝可梦名", "error");
+        return;
+    }
+    $("cobbleInput").value = buildCobbleCommand(res);
+    const notes = [];
+    if (!res.helditem) notes.push("未携带物（已省略 helditem）");
+    if (res.tera) notes.push("Tera Type 暂不写入指令");
+    showStatus("showdownStatus", "已生成 Cobblemon 指令" + (notes.length ? "（" + notes.join("；") + "）" : ""), "ok");
+}
+
+function cobbleToShowdown() {
+    const text = $("cobbleInput").value.trim();
+    if (!text) { showStatus("cobbleStatus", "请先粘贴 Cobblemon 指令", "error"); return; }
+    const params = parseCobble(text);
+    if (!params.species) {
+        showStatus("cobbleStatus", "未能识别指令，请检查格式（需包含宝可梦 ID）", "error");
+        return;
+    }
+    $("showdownInput").value = buildShowdownText(params);
+    showStatus("cobbleStatus", "已生成 Showdown 文本", "ok");
+}
+</script>
+</body>
+</html>
